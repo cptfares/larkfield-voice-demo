@@ -372,6 +372,7 @@
   function renderReport(r) {
     if (!r || !r.technician) { if (!reportShown) reportEl.hidden = true; return; }
     reportShown = true;
+    reportEl.hidden = false;
     const t = r.technician, o = r.owner || {};
     const flags = Object.entries(o.flags || {}).filter(([, v]) => v === true).map(([k]) => `<span class="tag">${esc(label(k))}</span>`).join("");
     const tech = ["customer", "job", "symptoms", "equipment", "safety", "dispatch", "technician_prep"]
