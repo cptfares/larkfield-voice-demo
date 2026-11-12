@@ -114,6 +114,20 @@
   .facts { margin-top: 18px; font-size: 14px; color: var(--muted); }
   .facts strong { color: var(--ink); font-weight: 600; }
 
+  .report { padding: 22px 24px; margin-bottom: 28px; }
+  .report[hidden] { display: none; }
+  .report h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  .report .summary { font-size: 16px; margin: 0 0 14px; }
+  .report .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .tag { font-size: 12.5px; font-weight: 600; border-radius: 999px; padding: 4px 10px; background: var(--you); }
+  .tag.warm { background: var(--kelly); color: var(--accent); }
+  .report .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 820px) { .report .cols { grid-template-columns: 1fr; } }
+  .report h3 { font-size: 15px; margin: 0 0 8px; }
+  .report dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; font-size: 14px; }
+  .report dt { color: var(--muted); }
+  .report dd { margin: 0; }
+  .report .wait { color: var(--muted); font-size: 14px; }
   footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
   footer .wrap { padding-top: 18px; padding-bottom: 28px; }
   .error { color: var(--danger); }
@@ -134,7 +148,7 @@
   <div class="wrap">
     <section>
       <h1>Talk to Kelly, our virtual receptionist</h1>
-      <p class="lede">Kelly picks up when the team can't. Tell her what's going on with your heating or AC and she'll get you booked. Talk to her just like you would on the phone.</p>
+      <p class="lede">Kelly picks up when the team can't. Tell her what's going on with your heating or AC and she'll set up a visit. When you hang up, you'll see the report she writes for the technician and the owner.</p>
 
       <div class="card call" id="call">
         <div class="orb">
@@ -161,6 +175,7 @@
           <span class="chip">"Can someone come Thursday morning?"</span>
           <span class="chip">"Do you work on radiators?"</span>
           <span class="chip">"Am I talking to a real person?"</span>
+          <span class="chip">"Hold on, let me check the thermostat."</span>
         </div>
       </div>
     </section>
@@ -171,6 +186,12 @@
         <p class="empty" id="empty">Your conversation with Kelly will show up here.</p>
       </div>
       <p class="facts"><strong>Open</strong> Mon–Fri 7:30–6, Sat 8–1 · <strong>Emergencies</strong> 24/7 · <strong>Service area</strong> Montgomery County, NW DC, Arlington and Alexandria</p>
+    </section>
+  </div>
+  <div class="wrap">
+    <section class="card report" id="report" hidden aria-live="polite">
+      <h2>After the call</h2>
+      <div id="reportBody"></div>
     </section>
   </div>
 </main>
@@ -293,6 +314,8 @@
       });
       room = new Room({ adaptiveStream: true, dynacast: true });
       room.registerTextStreamHandler("lk.transcription", onTranscription);
+      room.registerTextStreamHandler("call.report", onReportStream);
+      reportEl.hidden = true; reportShown = false;
       room.on(RoomEvent.TrackSubscribed, (track) => {
         if (track.kind !== Track.Kind.Audio) return;
         document.body.appendChild(track.attach());
@@ -306,6 +329,7 @@
       room.on(RoomEvent.Disconnected, () => {
         const r = room; room = null;
         r?.unregisterTextStreamHandler("lk.transcription");
+        r?.unregisterTextStreamHandler("call.report");
         showIdle("Call ended");
       });
       await room.connect(serverUrl, participantToken);
@@ -329,9 +353,66 @@
     }
   }
 
+  // After-call report: technician + owner report written by the agent from the transcript.
+  const reportEl = $("report"), reportBody = $("reportBody");
+  let reportShown = false;
+  const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const label = (k) => k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  const known = (v) => v && !/^(unknown|n\/a)$/i.test(String(v).trim());
+  const clean = (v) => String(v).replace(/^Customer reported:\s*/i, "");
+  function rows(obj) {
+    return Object.entries(obj || {}).filter(([, v]) => known(v))
+      .map(([k, v]) => `<dt>${esc(label(k))}</dt><dd>${esc(clean(v))}</dd>`).join("");
+  }
+  function showReportWaiting() {
+    reportShown = false;
+    reportEl.hidden = false;
+    reportBody.innerHTML = '<p class="wait">Writing up the call for the technician and the owner…</p>';
+  }
+  function renderReport(r) {
+    if (!r || !r.technician) { if (!reportShown) reportEl.hidden = true; return; }
+    reportShown = true;
+    const t = r.technician, o = r.owner || {};
+    const flags = Object.entries(o.flags || {}).filter(([, v]) => v === true).map(([k]) => `<span class="tag">${esc(label(k))}</span>`).join("");
+    const tech = ["customer", "job", "symptoms", "equipment", "safety", "dispatch", "technician_prep"]
+      .map((sec) => rows(t[sec])).join("");
+    const owner = rows({ outcome: label(o.outcome || ""), service_requested: o.service_requested, lead_reason: o.lead_reason,
+      reason_not_booked: o.reason_not_booked, unresolved_request: o.unresolved_request, follow_up: o.follow_up_opportunity });
+    const notes = (o.quality_notes || []).map((n) => `<li>${esc(n)}</li>`).join("");
+    reportBody.innerHTML = `
+      <p class="summary">${esc(r.summary)}</p>
+      <div class="tags"><span class="tag ${o.lead_label === "warm" ? "warm" : ""}">${esc(label(o.lead_label || "normal"))} lead</span>${flags}</div>
+      <div class="cols">
+        <div><h3>Technician report</h3><dl>${tech || "<dd>Nothing recorded.</dd>"}</dl></div>
+        <div><h3>Owner report</h3><dl>${owner}</dl>${notes ? `<h3 style="margin-top:14px">Quality notes</h3><ul>${notes}</ul>` : ""}</div>
+      </div>`;
+  }
+  async function onReportStream(reader) {
+    let text = "";
+    for await (const d of reader) text += d;
+    try { renderReport(JSON.parse(text)); } catch (e) { console.error(e); }
+  }
+
   async function hangUp(message) {
     const r = room; room = null;
-    if (r) await r.disconnect();
+    if (!r) { if (message) showIdle(message); return; }
+    const agent = [...r.remoteParticipants.values()].find((p) => p.isAgent || p.identity.startsWith("agent-"));
+    if (agent && r.state === "connected") {
+      // Ask the agent for the report before leaving; it's written from the transcript.
+      await r.localParticipant.setMicrophoneEnabled(false).catch(() => {});
+      setState("thinking", "Writing up the call…");
+      showReportWaiting();
+      try {
+        const payload = await r.localParticipant.performRpc({
+          destinationIdentity: agent.identity, method: "call_report", payload: "", responseTimeout: 25000,
+        });
+        renderReport(JSON.parse(payload || "{}"));
+      } catch (e) {
+        console.error(e);
+        if (!reportShown) reportEl.hidden = true;
+      }
+    }
+    await r.disconnect();
     if (message) showIdle(message);
   }
 
