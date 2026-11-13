@@ -209,6 +209,9 @@
   // anyone who loads this page, which is fine for a demo on a usage-capped plan.
   const TOKEN_SERVER_ID = "voiceagent-21hutv";
   const AGENT_NAME = "hvac-receptionist";
+  // Kelly sleeps when nobody has called for a while; waking her now, while the visitor
+  // reads the page, saves them a 10-20 s wait after they click "Call Kelly".
+  fetch("https://larkfield-admin.fly.dev/api/wake", { method: "POST", mode: "no-cors", keepalive: true }).catch(() => {});
   const MAX_CALL_SECONDS = 300;
 
   const { Room, RoomEvent, Track, TokenSource } = LivekitClient;
