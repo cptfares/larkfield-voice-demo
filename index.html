@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Call Kelly · Larkfield Heating & Air</title>
-<meta name="description" content="Call Kelly, the front desk at Larkfield Heating & Air, from your browser. A demo with a made-up company.">
+<title>Call Adam · Larkfield Heating & Air</title>
+<meta name="description" content="Call Adam, the front desk at Larkfield Heating & Air, from your browser. A demo with a made-up company.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
@@ -41,7 +41,7 @@
 <body>
   <main id="call">
     <h1 class="who">Larkfield Heating &amp; Air</h1>
-    <p class="role">Kelly · front desk</p>
+    <p class="role">Adam · front desk</p>
     <div class="state" aria-live="polite">
       <div id="statusText">Ready to call</div>
       <div id="sub"></div>
@@ -51,7 +51,7 @@
     </button>
     <div class="key-label" id="keyLabel">Call</div>
   </main>
-  <footer>Demo with a made-up company. Kelly is an AI voice agent. Please use made-up details.</footer>
+  <footer>Demo with a made-up company. Adam is an AI voice agent. Please use made-up details.</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.22.4/dist/livekit-client.umd.js"></script>
 <script>
@@ -63,7 +63,7 @@
   // ?classic: the older Deepgram + GPT-4.1 + ElevenLabs Kelly.
   const params = new URLSearchParams(location.search);
   const ROOM_PREFIX = params.has("live") ? "larkfield-live-" : params.has("classic") ? "larkfield-demo-" : "larkfield-gpt-";
-  // Kelly sleeps when nobody has called for a while; wake her while the page is open.
+  // Adam sleeps when nobody has called for a while; wake him while the page is open.
   fetch("https://larkfield-admin.fly.dev/api/wake", { method: "POST", mode: "no-cors", keepalive: true }).catch(() => {});
 
   const { Room, RoomEvent, Track, TokenSource } = LivekitClient;
@@ -91,7 +91,7 @@
   function answer() {
     if (answered || !room) return;
     answered = true;
-    statusText.textContent = "Kelly";
+    statusText.textContent = "Adam";
     startedAt = Date.now(); timer = setInterval(tick, 1000); tick();
   }
 
