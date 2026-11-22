@@ -59,8 +59,10 @@
   const TOKEN_SERVER_ID = "voiceagent-21hutv";
   const AGENT_NAME = "hvac-receptionist";
   const MAX_CALL_SECONDS = 300;
-  // ?live tries Kelly on Gemini Live (speech-to-speech); the plain link is the usual Kelly.
-  const ROOM_PREFIX = new URLSearchParams(location.search).has("live") ? "larkfield-live-" : "larkfield-demo-";
+  // Plain link: Kelly on OpenAI gpt-realtime (speech-to-speech). ?live: Gemini Live.
+  // ?classic: the older Deepgram + GPT-4.1 + ElevenLabs Kelly.
+  const params = new URLSearchParams(location.search);
+  const ROOM_PREFIX = params.has("live") ? "larkfield-live-" : params.has("classic") ? "larkfield-demo-" : "larkfield-gpt-";
   // Kelly sleeps when nobody has called for a while; wake her while the page is open.
   fetch("https://larkfield-admin.fly.dev/api/wake", { method: "POST", mode: "no-cors", keepalive: true }).catch(() => {});
 
